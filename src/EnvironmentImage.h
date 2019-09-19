@@ -34,6 +34,7 @@ public:
     bool    LoadCubeFaces(const Array<fs::path>& paths);
 
     void    Free();
+    bool    IsEmpty() const;
 
     GLuint  GetTextureLatLong() const;
     GLuint  GetTextureCubeCross() const;

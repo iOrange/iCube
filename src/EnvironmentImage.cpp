@@ -125,6 +125,10 @@ void EnvironmentImage::Free() {
     }
 }
 
+bool EnvironmentImage::IsEmpty() const {
+    return mCubeFaces.empty();
+}
+
 GLuint EnvironmentImage::GetTextureLatLong() const {
     return mTextureLatLong;
 }

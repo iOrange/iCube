@@ -12,10 +12,15 @@ public:
     void        Shutdown();
 
 private:
-    void        Resize(const int width, const int height);
-    void        Update(const float dt);
+    void        OnResize(const int width, const int height);
+    void        OnSetCursorPos(const float x, const float y);
+    void        OnMouseButton(const int button, const int action, const int mods);
+    void        OnUpdate(const float dt);
 
     void        DoUI();
+    void        DrawCubeFaces(const vec4& clipRect);
+    void        DrawPreviewPanel(const vec4& clipRect);
+
     // LatLong
     void        ImportLatLong(const fs::path& path = fs::path());
     void        ExportLatLong(const fs::path& path = fs::path());
@@ -26,9 +31,22 @@ private:
     void        ImportCubeFaces(const Array<fs::path> paths = {});
     void        ExportCubeFaces(const fs::path& path = fs::path());
 
+    // render stuff
+    void        PrepareRenderer();
+
 private:
     void*               mWindow;
     int                 mWidth;
     int                 mHeight;
     EnvironmentImage    mEnvImg;
+
+    vec4                mViewerPanelBounds;
+    vec4                mCubeFacesPanelBounds;
+    vec2                mLastMPos;
+
+    // cube faces draw
+    GLuint              mDrawFacesShader;
+    GLuint              mJunkVAO;
+    bool                mCubeFacesMouseDown;
+    vec2                mCubeFacesRotation;
 };

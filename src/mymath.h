@@ -37,6 +37,17 @@ inline float Deg2Rad(const float deg) {
     return deg * (MM_Pi / 180.0f);
 }
 
+inline float WrapAngle(const float angle) {
+    float result = angle;
+    while (result > 360.0f) {
+        result -= 360.0f;
+    }
+    while (result < 0.0f) {
+        result += 360.0f;
+    }
+    return result;
+}
+
 template <typename T>
 inline T Lerp(const T& a, const T& b, const float t) {
     //return a + (b - a) * t;
