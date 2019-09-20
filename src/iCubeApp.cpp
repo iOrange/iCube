@@ -38,6 +38,14 @@ iCubeApp::iCubeApp()
     , mJunkVAO(GL_NONE)
     , mCubeFacesMouseDown(false)
     , mCubeFacesRotation(0.0f)
+    // viewer
+    , mViewerObjectShader(GL_NONE)
+    , mViewerVAO(GL_NONE)
+    , mViewerVB(GL_NONE)
+    , mViewerIB(GL_NONE)
+    , mViewerNumIndices(0)
+    , mViewerMouseDown(false)
+    , mViewerRotation(0.0f)
 {
 
 }
@@ -159,6 +167,23 @@ void iCubeApp::Shutdown() {
         mJunkVAO = GL_NONE;
     }
 
+    if (mViewerObjectShader != GL_NONE) {
+        glDeleteProgram(mViewerObjectShader);
+        mViewerObjectShader = GL_NONE;
+    }
+    if (mViewerVAO != GL_NONE) {
+        glDeleteVertexArrays(1, &mViewerVAO);
+        mViewerVAO = GL_NONE;
+    }
+    if (mViewerVB != GL_NONE) {
+        glDeleteBuffers(1, &mViewerVB);
+        mViewerVB = GL_NONE;
+    }
+    if (mViewerIB != GL_NONE) {
+        glDeleteBuffers(1, &mViewerIB);
+        mViewerIB = GL_NONE;
+    }
+
     glfwDestroyWindow(scast<GLFWwindow*>(mWindow));
     glfwTerminate();
 
@@ -178,9 +203,10 @@ void iCubeApp::OnSetCursorPos(const float x, const float y) {
     vec2 mouseMove = curMPos - mLastMPos;
     mLastMPos = curMPos;
 
-    if (mCubeFacesMouseDown) {
-        mCubeFacesRotation.x = WrapAngle(mCubeFacesRotation.x + mouseMove.x * 0.5f);
-        mCubeFacesRotation.y = WrapAngle(mCubeFacesRotation.y + mouseMove.y * 0.5f);
+    if (mCubeFacesMouseDown || mViewerMouseDown) {
+        vec2* rotationVec = mCubeFacesMouseDown ? &mCubeFacesRotation : &mViewerRotation;
+        rotationVec->x = WrapAngle(rotationVec->x + mouseMove.x * 0.5f);
+        rotationVec->y = WrapAngle(rotationVec->y + mouseMove.y * 0.5f);
     }
 }
 
@@ -192,10 +218,16 @@ void iCubeApp::OnMouseButton(const int button, const int action, const int mods)
                 mLastMPos.y > mCubeFacesPanelBounds.y &&
                 mLastMPos.y < mCubeFacesPanelBounds.w) {
                 mCubeFacesMouseDown = true;
+            } else if (mLastMPos.x > mViewerPanelBounds.x &&
+                       mLastMPos.x < mViewerPanelBounds.z &&
+                       mLastMPos.y > mViewerPanelBounds.y &&
+                       mLastMPos.y < mViewerPanelBounds.w) {
+                mViewerMouseDown = true;
             }
         }
     } else if (0 == button && GLFW_RELEASE == action) {
         mCubeFacesMouseDown = false;
+        mViewerMouseDown = false;
     }
 
 }
@@ -257,9 +289,7 @@ void iCubeApp::DoUI() {
             ImVec2 imgPos = ImVec2((wndSize.x - imgSize.x) * 0.5f + wndMin.x, (wndSize.y - imgSize.y) * 0.5f + wndMin.y);
 
             ImGui::SetCursorPos(imgPos);
-            ImGui::PushID("LatLongImg"); {
-                ImGui::Image(texture, imgSize);
-            } ImGui::PopID();
+            ImGui::Image(texture, imgSize);
 
             ImGui::SetCursorPos(wndMin);
         }
@@ -292,9 +322,7 @@ void iCubeApp::DoUI() {
             ImVec2 imgPos = ImVec2((wndSize.x - imgSize.x) * 0.5f + wndMin.x, (wndSize.y - imgSize.y) * 0.5f + wndMin.y);
 
             ImGui::SetCursorPos(imgPos);
-            ImGui::PushID("CubeCrossImg"); {
-                ImGui::Image(texture, imgSize);
-            } ImGui::PopID();
+            ImGui::Image(texture, imgSize);
 
             ImGui::SetCursorPos(wndMin);
         }
@@ -349,7 +377,6 @@ void iCubeApp::DrawCubeFaces(const vec4& clipRect) {
     const float wndHeight = clipRect.w - clipRect.y;
 
     glViewport(scast<GLint>(wndLeftTopX), mHeight - scast<GLint>(wndLeftTopY), scast<GLsizei>(wndWidth), scast<GLsizei>(wndHeight));
-    //glScissor(scast<GLint>(wndLeftTopX), mHeight - scast<GLint>(wndLeftTopY), scast<GLsizei>(wndWidth), scast<GLsizei>(wndHeight));
 
     glDisable(GL_SCISSOR_TEST);
     glEnable(GL_DEPTH_TEST);
@@ -387,11 +414,52 @@ void iCubeApp::DrawCubeFaces(const vec4& clipRect) {
 
 void iCubeApp::DrawPreviewPanel(const vec4& clipRect) {
     mViewerPanelBounds = clipRect;
+
+    const float wndLeftTopX = clipRect.x;
+    const float wndLeftTopY = clipRect.w;
+    const float wndWidth = clipRect.z - clipRect.x;
+    const float wndHeight = clipRect.w - clipRect.y;
+
+    glViewport(scast<GLint>(wndLeftTopX), mHeight - scast<GLint>(wndLeftTopY), scast<GLsizei>(wndWidth), scast<GLsizei>(wndHeight));
+
+    glDisable(GL_SCISSOR_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+
+    glUseProgram(mViewerObjectShader);
+
+    const GLint locProj = glGetUniformLocation(mViewerObjectShader, "gProj");
+    const GLint locModel = glGetUniformLocation(mViewerObjectShader, "gModel");
+    const GLint locTCube = glGetUniformLocation(mViewerObjectShader, "tCubeMap");
+
+    mat4 model = glm::rotate(mat4(1.0f), Deg2Rad(mViewerRotation.x), vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, Deg2Rad(mViewerRotation.y), vec3(1.0f, 0.0f, 0.0f));
+    model[3] = vec4(0.0f, 0.0f, -3.5f, 1.0f);
+
+    mat4 proj = MatPerspective(Deg2Rad(60.0f), wndWidth / wndHeight, 0.1f, 15.0f);
+
+    if (locProj >= 0) {
+        glUniformMatrix4fv(locProj, 1, GL_FALSE, MatToPtr(proj));
+    }
+    if (locModel >= 0) {
+        glUniformMatrix4fv(locModel, 1, GL_FALSE, MatToPtr(model));
+    }
+    if (locTCube >= 0) {
+        glUniform1i(locTCube, 0);
+    }
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, mEnvImg.GetTextureCubeMap());
+
+    // we don't provide any geometry - it'll be generated via vertex shader
+    glBindVertexArray(mViewerVAO);
+    glDrawElements(GL_TRIANGLES, scast<GLsizei>(mViewerNumIndices), GL_UNSIGNED_INT, nullptr);
 }
 
 
 
 nfdchar_t* kSupportedFilesExtensions = "bmp,jpg,tga,png,hdr";
+nfdchar_t* kSupportedFilesExtensionsSep = "bmp;jpg;tga;png;hdr";
 
 // LatLong
 void iCubeApp::ImportLatLong(const fs::path& path) {
@@ -412,13 +480,13 @@ void iCubeApp::ExportLatLong(const fs::path& path) {
     fs::path dstPath = path;
     if (dstPath.empty()) {
         nfdchar_t* outPath = nullptr;
-        if (NFD_OKAY == NFD_SaveDialog(kSupportedFilesExtensions, nullptr, &outPath)) {
+        if (NFD_OKAY == NFD_SaveDialog(kSupportedFilesExtensionsSep, nullptr, &outPath)) {
             dstPath = outPath;
         }
     }
 
     if (!dstPath.empty()) {
-
+        mEnvImg.SaveLatLong(dstPath);
     }
 }
 
@@ -441,13 +509,13 @@ void iCubeApp::ExportCubeCross(const fs::path& path) {
     fs::path dstPath = path;
     if (dstPath.empty()) {
         nfdchar_t* outPath = nullptr;
-        if (NFD_OKAY == NFD_SaveDialog(kSupportedFilesExtensions, nullptr, &outPath)) {
+        if (NFD_OKAY == NFD_SaveDialog(kSupportedFilesExtensionsSep, nullptr, &outPath)) {
             dstPath = outPath;
         }
     }
 
     if (!dstPath.empty()) {
-
+        mEnvImg.SaveCubeCross(dstPath);
     }
 }
 
@@ -475,19 +543,22 @@ void iCubeApp::ExportCubeFaces(const fs::path& path) {
     fs::path dstPath = path;
     if (dstPath.empty()) {
         nfdchar_t* outPath = nullptr;
-        if (NFD_OKAY == NFD_SaveDialog(kSupportedFilesExtensions, nullptr, &outPath)) {
+        if (NFD_OKAY == NFD_SaveDialog(kSupportedFilesExtensionsSep, nullptr, &outPath)) {
             dstPath = outPath;
         }
     }
 
     if (!dstPath.empty()) {
-
+        mEnvImg.SaveCubeFaces(dstPath);
     }
 }
 
 
 const char gCubeFacesShaderCode[] = {
 #include "shaders/simple_cube.glsl"
+};
+const char gViewerObjectShaderCode[] = {
+#include "shaders/viewer_object.glsl"
 };
 
 static GLuint CompileGLSLShader(const String& source, const bool isVertex) {
@@ -566,6 +637,94 @@ GLuint CreateGLSLProgram(const String& shaderSource) {
 
 void iCubeApp::PrepareRenderer() {
     mDrawFacesShader = CreateGLSLProgram(gCubeFacesShaderCode);
-
     glGenVertexArrays(1, &mJunkVAO);
+
+    mCubeFacesRotation = vec2(30.0f, 35.0f);
+
+    // viewer
+    this->GenerateRoundedCube(128, 0.2f);
+    mViewerObjectShader = CreateGLSLProgram(gViewerObjectShaderCode);
+
+    mViewerRotation = vec2(330.0f, 35.0f);
+}
+
+
+static float SignPower(const float v, const float n) {
+    if (v >= 0.0f) {
+        return std::powf(v, n);
+    } else {
+        return -std::powf(-v, n);
+    }
+}
+
+void iCubeApp::GenerateRoundedCube(const size_t resolution, const float power) {
+    Array<vec3> vertices((resolution + 1) * (resolution / 2 + 1));
+    vec3* vb = vertices.data();
+
+    const float invRes = 1.0f / scast<float>(resolution);
+    const float invHalfRes = 1.0f / scast<float>(resolution / 2);
+
+    // Pole is along the z axis
+    for (size_t j = 0; j <= resolution / 2; ++j) {
+        for (size_t i = 0; i <= resolution; i++) {
+            const size_t index = j * (resolution + 1) + i;
+            const float theta = scast<float>(i) * MM_TwoPi * invRes;
+            const float phi = -MM_HalfPi + MM_Pi * scast<float>(j) * invHalfRes;
+
+            vec3& pos = vb[index];
+
+            // unit sphere, power determines roundness
+            pos.x = SignPower(std::cosf(phi), power) * SignPower(std::cosf(theta), power);
+            pos.y = SignPower(std::cosf(phi), power) * SignPower(std::sinf(theta), power);
+            pos.z = SignPower(std::sinf(phi), power);
+
+            // seams
+            if (j == 0) {
+                pos.x = 0.0f;
+                pos.y = 0.0f;
+                pos.z = -1.0f;
+            }
+            if (j == resolution / 2) {
+                pos.x = 0.0f;
+                pos.y = 0.0f;
+                pos.z = 1.0f;
+            }
+            if (i == resolution) {
+                pos.x = vb[j * (resolution + 1) + i - resolution].x;
+                pos.y = vb[j * (resolution + 1) + i - resolution].y;
+            }
+        }
+    }
+
+    Array<uint32_t> indices(resolution * (resolution / 2) * 6);
+    uint32_t* ib = indices.data();
+    for (size_t j = 0; j < resolution / 2; ++j) {
+        for (size_t i = 0; i < resolution; ++i, ib += 6) {
+            const uint32_t a = scast<uint32_t>(j * (resolution + 1) + i);
+            const uint32_t b = scast<uint32_t>(j * (resolution + 1) + (i + 1));
+            const uint32_t c = scast<uint32_t>((j + 1) * (resolution + 1) + (i + 1));
+            const uint32_t d = scast<uint32_t>((j + 1) * (resolution + 1) + i);
+
+            ib[0] = a; ib[1] = b; ib[2] = c;
+            ib[3] = a; ib[4] = c; ib[5] = d;
+        }
+    }
+
+    glGenVertexArrays(1, &mViewerVAO);
+    glBindVertexArray(mViewerVAO);
+
+    glGenBuffers(1, &mViewerVB);
+    glGenBuffers(1, &mViewerIB);
+
+    glBindBuffer(GL_ARRAY_BUFFER, mViewerVB);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vec3), vertices.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mViewerIB);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(uint32_t), indices.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+
+    mViewerNumIndices = indices.size();
 }

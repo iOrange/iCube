@@ -33,6 +33,7 @@ private:
 
     // render stuff
     void        PrepareRenderer();
+    void        GenerateRoundedCube(const size_t resolution, const float power);
 
 private:
     void*               mWindow;
@@ -49,4 +50,13 @@ private:
     GLuint              mJunkVAO;
     bool                mCubeFacesMouseDown;
     vec2                mCubeFacesRotation;
+
+    // viewer draw
+    GLuint              mViewerObjectShader;
+    GLuint              mViewerVAO;
+    GLuint              mViewerVB;
+    GLuint              mViewerIB;
+    size_t              mViewerNumIndices;
+    bool                mViewerMouseDown;
+    vec2                mViewerRotation;
 };

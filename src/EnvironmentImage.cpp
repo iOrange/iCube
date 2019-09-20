@@ -7,6 +7,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STBI_MSC_SECURE_CRT
+#define STB_IMAGE_WRITE_STATIC
+#include "stb_image_write.h"
+
 
 // Vertical cross layout
 //
@@ -22,8 +27,7 @@ static const size_t sVerticalCrossOffsetsY[EnvironmentImage::kNumCubeFaces] = {
     /*+X*/1, /*-X*/1, /*+Y*/0, /*-Y*/2, /*+Z*/1, /*-Z*/3,
 };
 
-static const vec3 sFaceUvVectors[EnvironmentImage::kNumCubeFaces][3] =
-{
+static const vec3 sFaceUvVectors[EnvironmentImage::kNumCubeFaces][3] = {
     { // +x face
         {  0.0f,  0.0f, -1.0f }, // u -> -z
         {  0.0f, -1.0f,  0.0f }, // v -> -y
@@ -54,6 +58,10 @@ static const vec3 sFaceUvVectors[EnvironmentImage::kNumCubeFaces][3] =
         {  0.0f, -1.0f,  0.0f }, // v -> -y
         {  0.0f,  0.0f, -1.0f }, // -z face
     }
+};
+
+static const String sFacesFilenameSuffixes[EnvironmentImage::kNumCubeFaces] = {
+    "_px", "_nx", "_py", "_ny", "_pz", "_nz"
 };
 
 
@@ -104,6 +112,46 @@ bool EnvironmentImage::LoadCubeCross(const fs::path& path) {
 bool EnvironmentImage::LoadCubeFaces(const Array<fs::path>& paths) {
     this->Free();
     return false;
+}
+
+bool EnvironmentImage::SaveLatLong(const fs::path& path) {
+    if (mLatLong.data.empty()) {
+        return false;
+    } else {
+        return this->SaveImage2D(path, mLatLong);
+    }
+}
+
+bool EnvironmentImage::SaveCubeCross(const fs::path& path) {
+    if (mCubeCross.data.empty()) {
+        return false;
+    } else {
+        return this->SaveImage2D(path, mCubeCross);
+    }
+}
+
+bool EnvironmentImage::SaveCubeFaces(const fs::path& path) {
+    bool result = false;
+
+    if (!mCubeFaces.empty()) {
+        fs::path rootFolder = path.parent_path();
+        fs::path fileName = path.stem();
+        String extension = path.extension().u8string();
+
+        for (size_t i = 0; i < EnvironmentImage::kNumCubeFaces; ++i) {
+            const String& suffix = sFacesFilenameSuffixes[i];
+
+            fs::path facePath = rootFolder / fileName;
+            facePath += suffix + extension;
+
+            result = this->SaveImage2D(facePath, mCubeFaces[i]);
+            if (!result) {
+                break;
+            }
+        }
+    }
+
+    return result;
 }
 
 void EnvironmentImage::Free() {
@@ -214,6 +262,43 @@ bool EnvironmentImage::LoadImage2D(const fs::path& path, Image2D& img) {
 
         result = true;
     }
+
+    return result;
+}
+
+bool EnvironmentImage::SaveImage2D(const fs::path& path, Image2D& img) {
+    bool result = false;
+
+    const String pathUtf8 = path.u8string();
+    const String extension = path.extension().u8string();
+
+    int stbiRet = 0;
+    if (extension == ".hdr") {
+        stbiRet = stbi_write_hdr(pathUtf8.c_str(), scast<int>(img.width), scast<int>(img.height), STBI_rgb, rcast<const float*>(img.data.data()));
+    } else {
+        const size_t numPixels = img.data.size();
+        Array<uint8_t> ldrPixels(numPixels * 3);
+
+        for (size_t i = 0; i < numPixels; ++i) {
+            const vec3& hdrPixel = img.data[i];
+
+            ldrPixels[i * 3 + 0] = scast<uint8_t>(scast<uint32_t>(hdrPixel.x * 255.0f) & 0xFF);
+            ldrPixels[i * 3 + 1] = scast<uint8_t>(scast<uint32_t>(hdrPixel.y * 255.0f) & 0xFF);
+            ldrPixels[i * 3 + 2] = scast<uint8_t>(scast<uint32_t>(hdrPixel.z * 255.0f) & 0xFF);
+        }
+
+        if (extension == ".bmp") {
+            stbiRet = stbi_write_bmp(pathUtf8.c_str(), scast<int>(img.width), scast<int>(img.height), STBI_rgb, ldrPixels.data());
+        } else if (extension == ".jpg") {
+            stbiRet = stbi_write_jpg(pathUtf8.c_str(), scast<int>(img.width), scast<int>(img.height), STBI_rgb, ldrPixels.data(), 95);
+        } else if (extension == ".tga") {
+            stbiRet = stbi_write_tga(pathUtf8.c_str(), scast<int>(img.width), scast<int>(img.height), STBI_rgb, ldrPixels.data());
+        } else if (extension == ".png") {
+            stbiRet = stbi_write_png(pathUtf8.c_str(), scast<int>(img.width), scast<int>(img.height), STBI_rgb, ldrPixels.data(), 0);
+        }
+    }
+
+    result = (stbiRet != 0);
 
     return result;
 }

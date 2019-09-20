@@ -210,6 +210,9 @@ static nfdresult_t AddFiltersToDialog( ::IFileDialog *fileOpenDialog, const char
     
     fileOpenDialog->SetFileTypes( filterCount+1, specList );
 
+    //#NOTE_SK: this is to force windows to append extension to the file name
+    fileOpenDialog->SetDefaultExtension(specList[0].pszSpec);
+
     /* free speclist */
     for ( size_t i = 0; i < filterCount; ++i )
     {

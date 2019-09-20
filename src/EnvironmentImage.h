@@ -33,6 +33,10 @@ public:
     bool    LoadCubeCross(const fs::path& path);
     bool    LoadCubeFaces(const Array<fs::path>& paths);
 
+    bool    SaveLatLong(const fs::path& path);
+    bool    SaveCubeCross(const fs::path& path);
+    bool    SaveCubeFaces(const fs::path& path);
+
     void    Free();
     bool    IsEmpty() const;
 
@@ -52,6 +56,8 @@ public:
 
 private:
     bool    LoadImage2D(const fs::path& path, Image2D& img);
+    bool    SaveImage2D(const fs::path& path, Image2D& img);
+
     vec3    SampleImage2D(const Image2D& img, const float u, const float v) const;
 
     void    LatLongToCubeFaces();
