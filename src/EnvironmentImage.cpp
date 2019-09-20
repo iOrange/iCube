@@ -141,6 +141,30 @@ GLuint EnvironmentImage::GetTextureCubeMap() const {
     return mTextureCubeMap;
 }
 
+size_t EnvironmentImage::GetLatLongWidth() const {
+    return mLatLong.width;
+}
+
+size_t EnvironmentImage::GetLatLongHeight() const {
+    return mLatLong.height;
+}
+
+size_t EnvironmentImage::GetCubeCrossWidth() const {
+    return mCubeCross.width;
+}
+
+size_t EnvironmentImage::GetCubeCrossHeight() const {
+    return mCubeCross.height;
+}
+
+size_t EnvironmentImage::GetCubeFaceWidth() const {
+    return mCubeFaces.empty() ? size_t(0) : mCubeFaces.front().width;
+}
+
+size_t EnvironmentImage::GetCubeFaceHeight() const {
+    return mCubeFaces.empty() ? size_t(0) : mCubeFaces.front().height;
+}
+
 vec3 EnvironmentImage::SampleCube(const vec3& dir) const {
     const vec3 absVec(std::fabsf(dir.x), std::fabsf(dir.y), std::fabsf(dir.z));
 

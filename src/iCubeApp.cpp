@@ -243,11 +243,20 @@ void iCubeApp::DoUI() {
     ImGui::Begin("LatLong:", nullptr, kPanelFlags); {
         const ImTextureID texture = rcast<ImTextureID>(scast<size_t>(mEnvImg.GetTextureLatLong()));
         if (texture) {
+            const float textureWidth = scast<float>(mEnvImg.GetLatLongWidth());
+            const float textureHeight = scast<float>(mEnvImg.GetLatLongHeight());
+            const float textureRatio = textureWidth / textureHeight;
+
             ImVec2 wndMin = ImGui::GetWindowContentRegionMin();
             ImVec2 wndMax = ImGui::GetWindowContentRegionMax();
+            ImVec2 wndSize = ImVec2(wndMax.x - wndMin.x, wndMax.y - wndMin.y);
+            const float wndRatio = wndSize.x / wndSize.y;
 
-            ImVec2 imgSize = ImVec2(wndMax.x - wndMin.x, wndMax.y - wndMin.y);
+            const float scale = (wndRatio >= textureRatio) ? wndSize.y / textureHeight : wndSize.x / textureWidth;
+            ImVec2 imgSize = ImVec2(textureWidth * scale, textureHeight * scale);
+            ImVec2 imgPos = ImVec2((wndSize.x - imgSize.x) * 0.5f + wndMin.x, (wndSize.y - imgSize.y) * 0.5f + wndMin.y);
 
+            ImGui::SetCursorPos(imgPos);
             ImGui::PushID("LatLongImg"); {
                 ImGui::Image(texture, imgSize);
             } ImGui::PopID();
@@ -269,11 +278,20 @@ void iCubeApp::DoUI() {
     ImGui::Begin("Cube Cross:", nullptr, kPanelFlags); {
         const ImTextureID texture = rcast<ImTextureID>(scast<size_t>(mEnvImg.GetTextureCubeCross()));
         if (texture) {
+            const float textureWidth = scast<float>(mEnvImg.GetCubeCrossWidth());
+            const float textureHeight = scast<float>(mEnvImg.GetCubeCrossHeight());
+            const float textureRatio = textureWidth / textureHeight;
+
             ImVec2 wndMin = ImGui::GetWindowContentRegionMin();
             ImVec2 wndMax = ImGui::GetWindowContentRegionMax();
+            ImVec2 wndSize = ImVec2(wndMax.x - wndMin.x, wndMax.y - wndMin.y);
+            const float wndRatio = wndSize.x / wndSize.y;
 
-            ImVec2 imgSize = ImVec2(wndMax.x - wndMin.x, wndMax.y - wndMin.y);
+            const float scale = (wndRatio >= textureRatio) ? wndSize.y / textureHeight : wndSize.x / textureWidth;
+            ImVec2 imgSize = ImVec2(textureWidth * scale, textureHeight * scale);
+            ImVec2 imgPos = ImVec2((wndSize.x - imgSize.x) * 0.5f + wndMin.x, (wndSize.y - imgSize.y) * 0.5f + wndMin.y);
 
+            ImGui::SetCursorPos(imgPos);
             ImGui::PushID("CubeCrossImg"); {
                 ImGui::Image(texture, imgSize);
             } ImGui::PopID();

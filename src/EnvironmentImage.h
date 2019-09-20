@@ -40,6 +40,13 @@ public:
     GLuint  GetTextureCubeCross() const;
     GLuint  GetTextureCubeMap() const;
 
+    size_t  GetLatLongWidth() const;
+    size_t  GetLatLongHeight() const;
+    size_t  GetCubeCrossWidth() const;
+    size_t  GetCubeCrossHeight() const;
+    size_t  GetCubeFaceWidth() const;
+    size_t  GetCubeFaceHeight() const;
+
     vec3    SampleCube(const vec3& dir) const;
     vec3    SampleLatLong(const vec3& dir) const;
 
