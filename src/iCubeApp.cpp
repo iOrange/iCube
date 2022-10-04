@@ -405,7 +405,7 @@ void iCubeApp::DrawCubeFaces(const vec4& clipRect) {
     }
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, mEnvImg.GetTextureCubeMap());
+    glBindTexture(GL_TEXTURE_CUBE_MAP, mEnvImg.IsEmpty() ? 0u : mEnvImg.GetTextureCubeMap());
 
     // we don't provide any geometry - it'll be generated via vertex shader
     glBindVertexArray(mJunkVAO);
@@ -449,7 +449,7 @@ void iCubeApp::DrawPreviewPanel(const vec4& clipRect) {
     }
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, mEnvImg.GetTextureCubeMap());
+    glBindTexture(GL_TEXTURE_CUBE_MAP, mEnvImg.IsEmpty() ? 0u : mEnvImg.GetTextureCubeMap());
 
     // we don't provide any geometry - it'll be generated via vertex shader
     glBindVertexArray(mViewerVAO);

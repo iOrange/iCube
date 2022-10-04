@@ -234,6 +234,9 @@ vec3 EnvironmentImage::SampleCube(const vec3& dir) const {
     const float u = (Dot(sFaceUvVectors[scast<size_t>(face)][0], faceVec) + 1.0f) * 0.5f;
     const float v = (Dot(sFaceUvVectors[scast<size_t>(face)][1], faceVec) + 1.0f) * 0.5f;
 
+    assert(u >= 0.0f && u <= 1.0f);
+    assert(v >= 0.0f && v <= 1.0f);
+
     return this->SampleImage2D(mCubeFaces[scast<size_t>(face)], u, v);
 }
 
@@ -310,21 +313,20 @@ vec3 EnvironmentImage::SampleImage2D(const Image2D& img, const float u, const fl
     const size_t iy = scast<size_t>(img.height * v) % img.height;
     return img.data[ix + iy * img.width];
 #else
-    // Bilinear
-    float m;
-    float mu = std::modf(u, &m);
-    float mv = std::modf(v, &m);
+    // Bilinear, clamped
+    float mu = Clamp(u, 0.0f, 1.0f);
+    float mv = Clamp(v, 0.0f, 1.0f);
 
-    const float fu = mu * scast<float>(img.width);
-    const float fv = mv * scast<float>(img.height);
+    const float fu = mu * scast<float>(img.width - 1);
+    const float fv = mv * scast<float>(img.height - 1);
 
     const size_t u00 = scast<size_t>(fu);
-    const size_t u01 = (u00 + 1) % img.width;
+    const size_t u01 = Minimum(u00 + 1, img.width - 1);//(u00 + 1) % img.width;
     const size_t u10 = u00;
     const size_t u11 = u01;
     const size_t v00 = scast<size_t>(fv);
     const size_t v01 = v00;
-    const size_t v10 = (v00 + 1) % img.height;
+    const size_t v10 = Minimum(v00 + 1, img.height - 1);//(v00 + 1) % img.height;
     const size_t v11 = v10;
 
     const float ku = fu - u00;

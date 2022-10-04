@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.8)
 
 #NOTE_SK: this is my attempt to port SConstruct script to CMake
 
-project(nfd CXX)
+project(nfd CXX C)
 
 set(SOURCES "src/nfd_common.c")
 
